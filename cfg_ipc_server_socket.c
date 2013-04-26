@@ -4,6 +4,8 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +61,7 @@ static int server_listen(const char *name)
 {
 	int fd, len;
 	struct sockaddr_un un;
+	mode_t old_mode;
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
 	{
@@ -78,7 +81,17 @@ static int server_listen(const char *name)
 		DEBUG_ERR("bind socket error: %s\n", strerror(errno));
 		goto errout;
 	}
+	
+	old_mode = umask(0);
+	if (chmod(name, 0777) < 0)
+	{
+		umask(old_mode);
+		DEBUG_ERR("chmod %s error\n", name);
+		goto errout;
+	}
 
+	umask(old_mode);
+	
 	if (listen(fd, SERVER_MAX_LISTEN) < 0)
 	{
 		DEBUG_ERR("listen socket error: %s\n", strerror(errno));

@@ -1,6 +1,8 @@
 #include "cfg_common.h"
 
 #include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -28,7 +30,8 @@ static int client_conn(const char *server_name, const char *client_name)
 {
 	int fd, len;
 	struct sockaddr_un un;
-
+	mode_t old_mode;
+	
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
 	{
 		DEBUG_ERR("create socket error:%s", strerror(errno));
@@ -48,6 +51,16 @@ static int client_conn(const char *server_name, const char *client_name)
 		goto errout;
 	}
 
+	old_mode = umask(0);
+	if (chmod(un.sun_path, 0777) < 0)
+	{
+		umask(old_mode);
+		DEBUG_ERR("chmod %s error\n", un.sun_path);
+		goto errout;
+	}
+	
+	umask(old_mode);
+	
 	memset(&un, 0, sizeof(un));
 	un.sun_family = AF_UNIX;
 	strcpy(un.sun_path, server_name); 
@@ -149,7 +162,7 @@ int main()
 	}
 
 	sprintf(buf, "client_name %s", client_name);
-	write(fd, buf, sizeof(buf));
+	swriten(fd, buf, sizeof(buf));
 
 	close(fd);
 	unlink(client_name);
