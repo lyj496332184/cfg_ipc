@@ -59,7 +59,7 @@ typedef struct cfg_fdevents {
 	int (*poll)(struct cfg_fdevents *ev, int timeout_ms);
 } cfg_fdevents;
 
-cfg_fdevents *cfg_fdevent_init(size_t maxfds, cfg_fdevent_handler_t type);
+int cfg_fdevent_init(cfg_fdevents *ev);
 int cfg_fdevent_reset(cfg_fdevents *ev);
 void cfg_fdevent_free(cfg_fdevents *ev);
 

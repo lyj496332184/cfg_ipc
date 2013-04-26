@@ -5,7 +5,7 @@ include $(CLEAR_VARS)
 LOCAL_C_INCLUDES := $(KERNEL_HEADERS)
 
 LOCAL_SRC_FILES := \
-			cfg_ipc_server_socket.c cfg_fdevent.c cfg_fdevent_select.c
+			test_server.o cfg_ipc_server_socket.c cfg_fdevent.c cfg_fdevent_select.c
 
 LOCAL_CFLAGS :=-DUSE_SELECT
 

@@ -1,6 +1,6 @@
 CFLAGS += -DUSE_SELECT -Wall
 
-OBJS_SERVER = cfg_ipc_server_socket.o cfg_fdevent.o cfg_fdevent_select.o
+OBJS_SERVER = test_server.o cfg_ipc_server_socket.o cfg_fdevent.o cfg_fdevent_select.o
 
 OBJS_CLIENT = cfg_ipc_client.o
 

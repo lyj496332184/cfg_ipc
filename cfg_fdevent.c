@@ -10,28 +10,22 @@
 #include <fcntl.h>
 #include <assert.h>
 
-cfg_fdevents *cfg_fdevent_init(size_t maxfds, cfg_fdevent_handler_t type)
+int cfg_fdevent_init(cfg_fdevents *ev)
 {
-	cfg_fdevents *ev;
-
-	ev = calloc(1, sizeof(*ev));
-	ev->maxfds = maxfds;
-
-	switch(type)
+	switch(ev->type)
 	{
 	case FDEVENT_HANDLER_SELECT:
 		if (0 != fdevent_select_init(ev))
 		{
 			DEBUG_ERR("event-handler select failed: %s\n", strerror(errno));
-			return NULL;
+			return -1;
 		}
-		return ev;
+		return 0;
 	case FDEVENT_HANDLER_UNSET:
 		break;
 	}
 
-	DEBUG_ERR("event-handler is unknown, try to set server.event-handler = \"select\"\n");
-	return NULL;
+	return -1;
 }
 
 void cfg_fdevent_free(cfg_fdevents *ev)
@@ -39,7 +33,8 @@ void cfg_fdevent_free(cfg_fdevents *ev)
 	if (!ev)
 		return;
 
-	free(ev);
+	if (ev->free)
+		ev->free(ev);
 }
 
 int cfg_fdevent_reset(cfg_fdevents *ev)
