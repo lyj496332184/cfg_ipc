@@ -1,5 +1,6 @@
 #include "cfg_common.h"
 #include "cfg_fdevent.h"
+#include "cfg_ipc_server.h"
 
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -20,6 +21,11 @@
 #define SERVER_MAX_LISTEN	10
 #define POLL_TIMEOUT		1
 #define MAX_MSG_LEN			1024
+
+static cfg_fdevents server_ev = {
+	.maxfds = SERVER_MAX_LISTEN,
+	.type = FDEVENT_HANDLER_SELECT,
+};
 
 static void signal_init(void)
 {
@@ -191,10 +197,9 @@ static int handle_client_event(cfg_fdevents *ev, int fd, int revents)
 	return -1;
 }
 
-int main()
+int cfg_ipc_server_start()
 {
 	int listenfd = -1;
-	cfg_fdevents *ev;
 	int fde_ndx = -1;
 	int timeout = POLL_TIMEOUT;
 	int ready_num = -1;
@@ -202,15 +207,13 @@ int main()
 	signal_init();
 	rlimit_init();
 	
-	ev = cfg_fdevent_init(SERVER_MAX_LISTEN, FDEVENT_HANDLER_SELECT);
-
-	if (NULL == ev)
+	if (cfg_fdevent_init(&server_ev) < 0)
 	{
-		DEBUG_ERR("init fdevent error: %s\n", strerror(errno));
-		return 0;
+		DEBUG_ERR("init server fdevent error");
+		goto errout;
 	}
 	
-	cfg_fdevent_reset(ev);
+	cfg_fdevent_reset(&server_ev);
 	listenfd = server_listen(SERVER_IPC_DOMAIN_NAME);
 
 	if (listenfd < 0)
@@ -219,11 +222,11 @@ int main()
 		goto errout;
 	}
 
-	cfg_fdevent_event_set(ev, &fde_ndx, listenfd, FDEVENT_IN);
+	cfg_fdevent_event_set(&server_ev, &fde_ndx, listenfd, FDEVENT_IN);
 
 	while(1)
 	{
-		if ((ready_num = cfg_fdevent_poll(ev, timeout)) > 0)
+		if ((ready_num = cfg_fdevent_poll(&server_ev, timeout)) > 0)
 		{
 			int revents;
 			int fd_ndx;
@@ -233,18 +236,18 @@ int main()
 
 			do
 			{
-				fd_ndx = cfg_fdevent_event_next_fdndx(ev, fd_ndx);
+				fd_ndx = cfg_fdevent_event_next_fdndx(&server_ev, fd_ndx);
 
 				if (-1 == fd_ndx)
 					break;
 
-				revents = cfg_fdevent_event_get_revent(ev, fd_ndx);
-				fd = cfg_fdevent_event_get_fd(ev, fd_ndx);
+				revents = cfg_fdevent_event_get_revent(&server_ev, fd_ndx);
+				fd = cfg_fdevent_event_get_fd(&server_ev, fd_ndx);
 
 				if (fd == listenfd)
-					handle_listen_event(ev, fd, revents);
+					handle_listen_event(&server_ev, fd, revents);
 				else
-					handle_client_event(ev, fd, revents);
+					handle_client_event(&server_ev, fd, revents);
 			}while (--ready_num > 0);
 		}
 		else if (ready_num < 0 && errno != EINTR)
@@ -254,13 +257,13 @@ int main()
 	}
 	
 errout:
-	if (ev)
-		cfg_fdevent_free(ev);
+	cfg_fdevent_free(&server_ev);
+	
 	if (listenfd > 0)
 	{
 		close(listenfd);
 		unlink(SERVER_IPC_DOMAIN_NAME);		
 	}
 
-	return 0;
+	return -1;
 }
