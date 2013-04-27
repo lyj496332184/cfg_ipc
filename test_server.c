@@ -3,9 +3,11 @@
 
 #define SERVER_MAX_FDS		20
 
-void dispatch_client_msg(const char *msg)
+int dispatch_client_msg(const char *msg)
 {
 	printf("server recv msg: %s\n", msg);
+
+	return 1;
 }
 
 static cfg_fdevents server_ev = {
