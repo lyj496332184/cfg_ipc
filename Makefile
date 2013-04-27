@@ -12,10 +12,10 @@ TARGET_CLIENT = cfg_ipc_client
 all: clean $(TARGET_SERVER) $(TARGET_CLIENT)
 	
 $(TARGET_SERVER): $(OBJS_SERVER)
-	gcc $(OBJS_SERVER) -o $(@)
+	$(CC) $(OBJS_SERVER) -o $(@)
 
 $(TARGET_CLIENT): $(OBJS_CLIENT)
-	gcc $(OBJS_CLIENT) -o $(@)	
+	$(CC) $(OBJS_CLIENT) -o $(@)	
 
 .PHONY:clean
 clean: 
