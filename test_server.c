@@ -3,9 +3,9 @@
 
 #define SERVER_MAX_FDS		20
 
-int dispatch_client_msg(const char *msg)
+int dispatch_client_msg(int cli_fd, const char *msg)
 {
-	printf("server recv msg: %s\n", msg);
+	printf("server recv msg from cli_fd(%d) : %s\n", cli_fd, msg);
 
 	return 1;
 }

@@ -59,7 +59,7 @@ typedef struct cfg_fdevents {
 	int (*poll)(struct cfg_fdevents *ev, int timeout_ms);
 
 	/* handle client msg */
-	int (*handler_client_msg)(const char *msg);
+	int (*handler_client_msg)(int fd, const char *msg);
 } cfg_fdevents;
 
 int cfg_fdevent_init(cfg_fdevents *ev);
