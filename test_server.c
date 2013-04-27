@@ -3,9 +3,15 @@
 
 #define SERVER_MAX_FDS		20
 
+void dispatch_client_msg(const char *msg)
+{
+	printf("server recv msg: %s\n", msg);
+}
+
 static cfg_fdevents server_ev = {
 	.maxfds = SERVER_MAX_FDS,
 	.type = FDEVENT_HANDLER_SELECT,
+	.handler_client_msg = dispatch_client_msg,
 };
 
 int main()

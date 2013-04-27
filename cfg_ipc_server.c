@@ -189,7 +189,10 @@ static int handle_client_event(cfg_fdevents *ev, int fd, int revents)
 			return 0;
 		}
 		
-		printf("read buf:%s\n", buf);
+		if (ev->handler_client_msg)
+		{
+			ev->handler_client_msg(buf);
+		}
 
 		return nread;
 	}
