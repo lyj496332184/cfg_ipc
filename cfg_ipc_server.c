@@ -16,16 +16,11 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define ELF_CORE_SIZE		(256 * 1024)
-#define MAX_OPEN_FILES		300
-#define SERVER_MAX_LISTEN	10
-#define POLL_TIMEOUT		1
-#define MAX_MSG_LEN			1024
-
-static cfg_fdevents server_ev = {
-	.maxfds = SERVER_MAX_LISTEN,
-	.type = FDEVENT_HANDLER_SELECT,
-};
+#define ELF_CORE_SIZE				(256 * 1024)
+#define MAX_OPEN_FILES				300
+#define DEFAULT_SERVER_MAX_LISTEN	10
+#define POLL_TIMEOUT				1
+#define MAX_MSG_LEN					1024
 
 static void signal_init(void)
 {
@@ -63,7 +58,7 @@ static void rlimit_init(void)
 	setrlimit(RLIMIT_CORE, &rlim);
 }
 
-static int server_listen(const char *name)
+static int server_listen(const char *name, int backlog)
 {
 	int fd, len;
 	struct sockaddr_un un;
@@ -97,8 +92,13 @@ static int server_listen(const char *name)
 	}
 
 	umask(old_mode);
+
+	if (backlog <= 0)
+	{
+		backlog = DEFAULT_SERVER_MAX_LISTEN;
+	}
 	
-	if (listen(fd, SERVER_MAX_LISTEN) < 0)
+	if (listen(fd, backlog) < 0)
 	{
 		DEBUG_ERR("listen socket error: %s\n", strerror(errno));
 		goto errout;
@@ -197,7 +197,7 @@ static int handle_client_event(cfg_fdevents *ev, int fd, int revents)
 	return -1;
 }
 
-int cfg_ipc_server_start()
+int cfg_ipc_server_start(cfg_fdevents *ev)
 {
 	int listenfd = -1;
 	int fde_ndx = -1;
@@ -207,14 +207,14 @@ int cfg_ipc_server_start()
 	signal_init();
 	rlimit_init();
 	
-	if (cfg_fdevent_init(&server_ev) < 0)
+	if (cfg_fdevent_init(ev) < 0)
 	{
 		DEBUG_ERR("init server fdevent error");
 		goto errout;
 	}
 	
-	cfg_fdevent_reset(&server_ev);
-	listenfd = server_listen(SERVER_IPC_DOMAIN_NAME);
+	cfg_fdevent_reset(ev);
+	listenfd = server_listen(SERVER_IPC_DOMAIN_NAME, ev->maxfds);
 
 	if (listenfd < 0)
 	{
@@ -222,11 +222,11 @@ int cfg_ipc_server_start()
 		goto errout;
 	}
 
-	cfg_fdevent_event_set(&server_ev, &fde_ndx, listenfd, FDEVENT_IN);
+	cfg_fdevent_event_set(ev, &fde_ndx, listenfd, FDEVENT_IN);
 
 	while(1)
 	{
-		if ((ready_num = cfg_fdevent_poll(&server_ev, timeout)) > 0)
+		if ((ready_num = cfg_fdevent_poll(ev, timeout)) > 0)
 		{
 			int revents;
 			int fd_ndx;
@@ -236,18 +236,18 @@ int cfg_ipc_server_start()
 
 			do
 			{
-				fd_ndx = cfg_fdevent_event_next_fdndx(&server_ev, fd_ndx);
+				fd_ndx = cfg_fdevent_event_next_fdndx(ev, fd_ndx);
 
 				if (-1 == fd_ndx)
 					break;
 
-				revents = cfg_fdevent_event_get_revent(&server_ev, fd_ndx);
-				fd = cfg_fdevent_event_get_fd(&server_ev, fd_ndx);
+				revents = cfg_fdevent_event_get_revent(ev, fd_ndx);
+				fd = cfg_fdevent_event_get_fd(ev, fd_ndx);
 
 				if (fd == listenfd)
-					handle_listen_event(&server_ev, fd, revents);
+					handle_listen_event(ev, fd, revents);
 				else
-					handle_client_event(&server_ev, fd, revents);
+					handle_client_event(ev, fd, revents);
 			}while (--ready_num > 0);
 		}
 		else if (ready_num < 0 && errno != EINTR)
@@ -257,7 +257,7 @@ int cfg_ipc_server_start()
 	}
 	
 errout:
-	cfg_fdevent_free(&server_ev);
+	cfg_fdevent_free(ev);
 	
 	if (listenfd > 0)
 	{
