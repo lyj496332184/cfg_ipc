@@ -57,6 +57,9 @@ typedef struct cfg_fdevents {
 	int (*event_next_fdndx)(struct cfg_fdevents *ev, int ndx);
 
 	int (*poll)(struct cfg_fdevents *ev, int timeout_ms);
+
+	/* handle client msg */
+	void (*handler_client_msg)(const char *msg);
 } cfg_fdevents;
 
 int cfg_fdevent_init(cfg_fdevents *ev);
