@@ -18,9 +18,10 @@
 
 #define ELF_CORE_SIZE				(256 * 1024)
 #define MAX_OPEN_FILES				300
-#define DEFAULT_SERVER_MAX_LISTEN	10
+#define MAX_STACK_SIZE				8192
+#define DEFAULT_SERVER_MAX_LISTEN		10
 #define POLL_TIMEOUT				1
-#define MAX_MSG_LEN					1024
+#define MAX_MSG_LEN				1024
 
 static void signal_init(void)
 {
@@ -36,13 +37,18 @@ static void rlimit_init(void)
 {
 	struct rlimit rlim;
 	int ret;
+
+
+	rlim.rlim_cur = ELF_CORE_SIZE;
+	rlim.rlim_max = ELF_CORE_SIZE;
+	
+	setrlimit(RLIMIT_CORE, &rlim);
 	
 	ret = getrlimit(RLIMIT_NOFILE, &rlim);
 
 	if (ret < 0)
 	{
 		DEBUG_ERR("getrlimit:RLIMIT_NOFILE error\n");
-
 		return;
 	}
 
@@ -52,10 +58,19 @@ static void rlimit_init(void)
 		setrlimit(RLIMIT_NOFILE, &rlim);
 	}
 
-	rlim.rlim_cur = ELF_CORE_SIZE;
-	rlim.rlim_max = ELF_CORE_SIZE;
-	
-	setrlimit(RLIMIT_CORE, &rlim);
+	getrlimit(RLIMIT_STACK, &rlim);
+
+	if (ret < 0)
+	{
+		DEBUG_ERR("getrlimit:RLIMIT_STACK error\n");
+		return;
+	}
+
+	if (rlim.rlim_cur < MAX_STACK_SIZE)
+	{
+		rlim.rlim_cur = MAX_STACK_SIZE;
+		setrlimit(RLIMIT_STACK, &rlim);
+	}
 }
 
 static int server_listen(const char *name, int backlog)
